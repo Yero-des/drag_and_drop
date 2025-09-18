@@ -4,14 +4,14 @@ from tkinter import messagebox
 from db import nombres_especial, nombres_principal, opciones_web
 
 # Carga opciones activas desde la base de datos y las devuelve como diccionario
-def cargar_opciones_activas(tipo):
+def cargar_opciones_por_tipo(tipo):
   conn = sqlite3.connect("escaner.db")
   cursor = conn.cursor()
 
   cursor.execute("""
     SELECT id, nombre, orden, tipo, activo
     FROM opciones
-    WHERE activo = 1 AND tipo = ?
+    WHERE tipo = ?
     ORDER BY orden ASC
   """, (tipo,))
   rows = cursor.fetchall()

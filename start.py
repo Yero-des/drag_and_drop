@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from db import inicializar_db
-from controladores.opciones import cargar_opciones_activas
+from controladores.opciones import cargar_opciones_por_tipo
 
 inicializar_db()
 
@@ -27,6 +27,9 @@ def centrar_ventana_hija(ventana, ancho, alto, padre):
     ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
 
     ventana.deiconify() # Mostrar la ventana después de configurar
+
+def activar_guardar():
+    menu_bar.entryconfig("Guardar Cambios", state="normal")
 
 def on_start_drag(event):
     global dragged_item
@@ -59,6 +62,7 @@ def on_drop(event):
             datos[id_item]["orden"] = idx
 
     print("Nuevos datos:", datos)
+    activar_guardar() # Activa el guardado
     dragged_item = None
 
 def on_double_click(event):
@@ -71,6 +75,8 @@ def on_double_click(event):
         tree.delete(row)
         if id_item in datos:
             datos[id_item]["activo"] = 0
+        
+        activar_guardar() # Activa el guardado
         print("Nuevos datos:", datos)
 
 def ventana_agregar_opcion(tipo):
@@ -143,8 +149,20 @@ def agregar_opcion(entry_nombre, ventana_agregar, tipo):
     entry_nombre.delete(0, tk.END)
 
     print("Nuevos datos:", datos)
+    activar_guardar() # Activa el guardado
     messagebox.showinfo("Agregado", f"El nombre '{nombre}' ha sido agregado.", parent=ventana_agregar)
     ventana_agregar.destroy()
+
+def guardar_opciones():
+    """
+    Aquí iría la lógica para guardar los datos en la base de datos
+    * Los datos con su id ya creado solo se modifican
+    * Los datos nuevos se insertan con un nuevo id (Autogenerado en la DB)
+    * Se debera cerrar la ventana (root)
+    * En caso se quiera cerrar la ventana (root) sin hacer cambio debera aparece una 
+        ventana que diga "hay cambios sin guardar ¿desea salir sin guardar?"
+    """
+    return
 
 # --- UI ---
 root = tk.Tk()
@@ -152,7 +170,7 @@ root.title("Tabla dinámica con Drag & Drop y agregar")
 
 # --- MENU ---
 menu_bar = tk.Menu(root)
-menu_bar.add_command(label="Guardar Cambios", command=lambda: print("Guardar datos:", datos))
+menu_bar.add_command(label="Guardar Cambios", command=lambda: print("Guardar datos:", datos), state="disabled")
 menu_bar.add_command(label="Agregar", command=lambda: ventana_agregar_opcion(tipo=tipo))
 root.config(menu=menu_bar)
 
@@ -166,20 +184,17 @@ tree.column("Nombre", width=220, anchor="w")
 tree.column("Acciones", width=100, anchor="center")
 tree.pack(fill="both", expand=True, padx=8, pady=8)
 
-# Cargar datos iniciales ordenado
-# TO DO, TRAE TODO LUEGO LO FILTRAS, EVITATE PROBLEMAS DE DUPLICACION DE NOMBRES UNICOS YA QUE AUN VAN
-# ESTAN CREADOS PERO SU ESTADO ES ACTIVO 0
-datos = cargar_opciones_activas(tipo=tipo)
+datos = cargar_opciones_por_tipo(tipo=tipo)
 
 # Insertar en Treeview 
-for id_opcion, info in datos.items(): 
-    tree.insert( 
-    "", 
-    "end",
-    text=str(id_opcion), 
-    values=(info["nombre"], "❌ Eliminar")
-    )
-
+for id_opcion, info in datos.items():
+    if info["activo"] == 1:  # ✅ solo datos activos
+        tree.insert(
+            "",
+            "end",
+            text=str(id_opcion),
+            values=(info["nombre"], "❌ Eliminar")
+        )
 
 # Eventos drag & drop
 tree.bind("<ButtonPress-1>", on_start_drag, add='+')
