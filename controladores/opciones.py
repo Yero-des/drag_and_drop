@@ -1,7 +1,7 @@
 import sqlite3
 import tkinter as tk
 from tkinter import messagebox
-from db import nombres_especial, nombres_principal, opciones_web
+from db import nombres_especial, nombres_principal, promociones
 
 # Carga opciones activas desde la base de datos y las devuelve como diccionario
 def cargar_opciones_por_tipo(tipo):
@@ -39,105 +39,57 @@ def restablecer_opciones():
       activo BOOLEAN NOT NULL DEFAULT 1
     )
   ''')
-  conn.commit()
 
   # Eliminar todos los registros (más rápido que borrar tabla)
   cursor.execute("DELETE FROM opciones")
-  conn.commit()
 
   # Reiniciar contador de IDs (opcional, solo si quieres que empiece en 1 de nuevo)
+  # TODO: no funciona el recontador de IDs
   cursor.execute("DELETE FROM sqlite_sequence WHERE name='opciones'")
-  conn.commit()
 
   # Insertar registros por defecto
   def insertar_opciones(lista, tipo):
     for item in lista:
-      cursor.execute('''
-        INSERT INTO opciones (nombre, orden, tipo, activo)
-        VALUES (?, ?, ?, 1)
-      ''', (item[0], item[1], tipo))
+      try:
+        cursor.execute('''
+          INSERT OR IGNORE INTO opciones (nombre, orden, tipo, activo)
+          VALUES (?, ?, ?, 1)
+        ''', (item[0], item[1], tipo))
+      except Exception as e:
+          print(f"⚠️ Error al guardar {item[0]}: {e}")
 
   insertar_opciones(nombres_especial, "especial")
   insertar_opciones(nombres_principal, "principal")
-  insertar_opciones(opciones_web, "promocion")
+  insertar_opciones(promociones, "promocion")
 
   conn.commit()
   conn.close()
 
-def cargar_opciones(tree, tipo):
-  for fila in tree.get_children():
-    tree.delete(fila)
+"""
+Aquí iría la lógica para guardar los datos en la base de datos
+* Los datos con su id ya creado solo se modifican
+* Los datos nuevos se insertan con un nuevo id (Autogenerado en la DB)
+* En caso se quiera cerrar la ventana (root) sin hacer cambio debera aparece una 
+  ventana que diga "hay cambios sin guardar ¿desea salir sin guardar?"
+* En caso se guarde se deja en la misma ventana pero se desactiva el boton guardar
+""" 
+def actualizar_o_agregar_opcion(cursor, clave, opcion):
 
-  conn = sqlite3.connect('escaner.db')
-  cursor = conn.cursor()
-  cursor.execute('SELECT nombre, tipo, esta_activo FROM opciones WHERE tipo = ?', (tipo,))
-  for opcion in cursor.fetchall():
-    tree.insert('', tk.END, values=opcion.upper())
-
-  conn.close()
-
-def agregar_opcion(ventana, nombre, tipo, entry_nombre, cargar_opciones):
-
-  if not nombre or not tipo:
-    messagebox.showerror("Error", "Por favor, ingrese datos válidos")
-    return
+  opcion_id = clave
   
-  nombre = nombre.upper()
+  nombre_actual = opcion["nombre"]
+  tipo_actual = opcion["tipo"]
+  orden_actual = opcion["orden"]
+  esta_activo = opcion["activo"]
 
-  conn = sqlite3.connect('escaner.db')
-  cursor = conn.cursor()
-  cursor.execute('INSERT INTO opciones (nombre, tipo, esta_activo) VALUES (?, ?, ?)', (nombre, tipo, 1))
-  conn.commit()
-  conn.close()
-
-  entry_nombre.delete(0, tk.END)
-
-  cargar_opciones()
-  messagebox.showinfo("Éxito", "Opción agregada exitosamente", parent=ventana)
-
-def eliminar_opcion(tree, cargar_opciones):
-  seleccion = tree.selection()
-
-  if not seleccion:
-    messagebox.showerror("Error", "Seleccione una opción para eliminar")
-    return
-
-  opcion_id = tree.item(seleccion[0])['values'][0]
-
-  conn = sqlite3.connect('escaner.db')
-  cursor = conn.cursor()
-  cursor.execute('DELETE FROM opciones WHERE id = ?', (opcion_id,))
-  conn.commit()
-  conn.close()
-
-  cargar_opciones()
-  messagebox.showinfo("Éxito", "Opción eliminada exitosamente")
-
-def actualizar_opcion(tree, entry_nombre, entry_tipo, check_activo, cargar_opciones):
-  seleccion = tree.selection()
-
-  if not seleccion:
-    messagebox.showerror("Error", "Seleccione una opción para actualizar")
-    return
-
-  opcion_id = tree.item(seleccion[0])['values'][0]
-  nombre = entry_nombre.get()
-  tipo = entry_tipo.get()
-  esta_activo = 1 if check_activo.get() else 0
-
-  if not nombre or not tipo:
-    messagebox.showerror("Error", "Por favor, ingrese datos válidos")
-    return
-
-  conn = sqlite3.connect('escaner.db')
-  cursor = conn.cursor()
-  cursor.execute('UPDATE opciones SET nombre = ?, tipo = ?, esta_activo = ? WHERE id = ?', (nombre, tipo, esta_activo, opcion_id))
-  conn.commit()
-  conn.close()
-
-  entry_nombre.delete(0, tk.END)
-  entry_tipo.delete(0, tk.END)
-  check_activo.set(1)
-
-  cargar_opciones()
-  messagebox.showinfo("Éxito", "Opción actualizada exitosamente")
+  # TODO: Problemas con los unicos y detergentes: posible solucion llamar a todas la base de datos y no solo a una parte
+  # TODO: Falta arregla el tema del ID cuando es nuevo de manera critica
+  cursor.execute("""
+    INSERT INTO opciones (id, nombre, tipo, orden, activo)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      nombre = excluded.nombre,
+      tipo = excluded.tipo,
+      orden = excluded.orden,
+      activo = excluded.activo
+  """, (opcion_id, nombre_actual, tipo_actual, orden_actual, esta_activo))

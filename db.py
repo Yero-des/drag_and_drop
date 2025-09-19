@@ -9,8 +9,8 @@ nombres_principal = [
   ("KASNET", 1), ("NIUBIZ", 2), ("LOTTINGO", 3), 
   ("GOLDEN", 4), ("BETSHOP", 5), ("VALE DE DESCUENTO", 6)
 ]
-opciones_web = [
-  ("MEGAJACKPOT", 1), ("LOTTINGO", 2), 
+promociones = [
+  ("MEGAJACKPOT", 1), ("GANADOR LOTTINGO", 2), 
   ("WEB RETAIL", 3), ("CUMPLEAÑERO", 4)
 ]
 
@@ -32,14 +32,17 @@ def inicializar_db():
   # Insertar registros por defecto
   def insertar_opciones(lista, tipo):
     for item in lista:
-      cursor.execute('''
-        INSERT OR IGNORE INTO opciones (nombre, orden, tipo)
-        VALUES (?, ?, ?)
-      ''', (item[0], item[1], tipo))
+      try:
+        cursor.execute('''
+          INSERT OR IGNORE INTO opciones (nombre, orden, tipo)
+          VALUES (?, ?, ?)
+        ''', (item[0], item[1], tipo))
+      except Exception as e:
+          print(f"⚠️ Error al insertar {item[0]}: {e}")
 
   insertar_opciones(nombres_especial, "especial")
   insertar_opciones(nombres_principal, "principal")
-  insertar_opciones(opciones_web, "promocion")
+  insertar_opciones(promociones, "promocion")
 
   conn.commit()
   conn.close()
