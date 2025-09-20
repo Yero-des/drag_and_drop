@@ -64,7 +64,7 @@ def guardar_opciones(ventana, datos):
     # Iterar sobre las filas obtenidas dentro de la base de datos
     for clave, opcion in datos.items():
         try:
-            actualizar_o_agregar_opcion(cursor, clave, opcion)
+            actualizar_o_agregar_opcion(cursor, opcion)
         except Exception as e:
             print(f"⚠️ Error al guardar clave {clave}: {e}")
 
@@ -102,6 +102,9 @@ def ventana_agregar_opcion(tipo):
     - Botón agregar
     """
     entry_nombre = tk.Entry(frame_entrada)
+
+    # Comando para agregar al presionar la tecla Enter
+    entry_nombre.bind("<Return>", lambda event: agregar_opcion(entry_nombre, ventana_agregar, tipo))
     entry_nombre.pack(side="top", fill="x", expand=True)
     entry_nombre.focus_set()
 
@@ -128,7 +131,7 @@ def agregar_opcion(entry_nombre, ventana_agregar, tipo):
             messagebox.showerror("Error", f"El nombre '{nombre}' ya existe.", parent=ventana_agregar)
             return
         # Si el nombre esta duplicado pero esta inactivo se vuelve a activar
-        elif info["nombre"] == nombre and info["activo"] == 0:
+        if info["nombre"] == nombre and info["activo"] == 0:
             nuevo_id = clave
             esta_inactivo = True
 
@@ -147,7 +150,7 @@ def agregar_opcion(entry_nombre, ventana_agregar, tipo):
 
     reasignar_orden(tree) # Funcion para reasignar el orden en el diccionario
 
-    print("Nuevos datos:", datos)
+    # print("Nuevos datos:", datos)
     activar_guardar() # Activa el guardado
     messagebox.showinfo("Agregado", f"El nombre '{nombre}' ha sido agregado.", parent=ventana_agregar)
     ventana_agregar.destroy()
@@ -157,7 +160,7 @@ def agregar_opcion(entry_nombre, ventana_agregar, tipo):
 VENTANA PRINCIPAL
 """
 root = tk.Tk()
-root.title("Tabla dinámica con Drag & Drop y agregar")
+root.title(f"Opciones \"{tipo.capitalize()}es\"")
 
 """
 MENU
@@ -221,7 +224,7 @@ def on_drop(event):
     
     reasignar_orden(tree) # Funcion para reasignar el orden en el diccionario
 
-    print("Nuevos datos:", datos)
+    # print("Nuevos datos:", datos)
     activar_guardar() # Activa el guardado
     dragged_item = None
 
@@ -239,7 +242,7 @@ def on_double_click(event):
         
         reasignar_orden(tree) # Funcion para reasignar el orden en el diccionario
         activar_guardar() # Activa el guardado
-        print("Nuevos datos:", datos)
+        # print("Nuevos datos:", datos)
 
 # Eventos drag & drop
 tree.bind("<ButtonPress-1>", on_start_drag, add='+')

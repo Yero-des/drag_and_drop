@@ -1,48 +1,52 @@
 import sqlite3
 
-# Listas de opciones por defecto
+# Listas de opciones por defecto (ahora solo strings)
 nombres_especial = [
-  ("DNI FRONTAL", 1), ("DNI REVERSO", 2), 
-  ("JUGADA", 3), ("COMPROBANTE", 4)
+  "DNI FRONTAL", "DNI REVERSO", "JUGADA", "COMPROBANTE"
 ]
 nombres_principal = [
-  ("KASNET", 1), ("NIUBIZ", 2), ("LOTTINGO", 3), 
-  ("GOLDEN", 4), ("BETSHOP", 5), ("VALE DE DESCUENTO", 6)
+  "KASNET", "NIUBIZ", "LOTTINGO",
+  "GOLDEN", "BETSHOP", "VALE DE DESCUENTO"
 ]
 promociones = [
-  ("MEGAJACKPOT", 1), ("GANADOR LOTTINGO", 2), 
-  ("WEB RETAIL", 3), ("CUMPLEAÑERO", 4)
+  "MEGAJACKPOT", "GANADOR LOTTINGO", "WEB RETAIL", "CUMPLEAÑERO"
 ]
 
+# Insertar registros por defecto
+def insertar_opciones(cursor, lista, tipo, inicializar=False):
+
+  for orden, nombre in enumerate(lista, start=1):  # orden según llegada
+    try:
+      # Resetear la secuencia solo al inicializar completamente
+      if inicializar:
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='opciones'")
+      cursor.execute('''
+        INSERT OR IGNORE INTO opciones (nombre, orden, tipo, activo)
+        VALUES (?, ?, ?, 1)
+      ''', (nombre, orden, tipo))
+    except Exception as e:
+      print(f"⚠️ Error al guardar {nombre}: {e}")
+
+# Inicializar la base de datos con las tablas y datos por defecto
 def inicializar_db():
   conn = sqlite3.connect('escaner.db')
   cursor = conn.cursor()
 
-  # Crear tabla con restricción en tipo
+  # Crear tabla con restricción de unicidad por (nombre, tipo)
   cursor.execute('''
     CREATE TABLE IF NOT EXISTS opciones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT NOT NULL UNIQUE,
+      nombre TEXT NOT NULL,
       orden INTEGER NOT NULL,
       tipo TEXT NOT NULL CHECK(tipo IN ('principal', 'especial', 'promocion')),
-      activo BOOLEAN NOT NULL DEFAULT 1
-    )''')
-  conn.commit()
+      activo BOOLEAN NOT NULL DEFAULT 1,
+      UNIQUE(nombre, tipo) -- 🔑 Aquí está la clave
+    )
+  ''')
 
-  # Insertar registros por defecto
-  def insertar_opciones(lista, tipo):
-    for item in lista:
-      try:
-        cursor.execute('''
-          INSERT OR IGNORE INTO opciones (nombre, orden, tipo)
-          VALUES (?, ?, ?)
-        ''', (item[0], item[1], tipo))
-      except Exception as e:
-          print(f"⚠️ Error al insertar {item[0]}: {e}")
-
-  insertar_opciones(nombres_especial, "especial")
-  insertar_opciones(nombres_principal, "principal")
-  insertar_opciones(promociones, "promocion")
+  insertar_opciones(cursor, nombres_especial, "especial", inicializar=True)
+  insertar_opciones(cursor, nombres_principal, "principal", inicializar=True)
+  insertar_opciones(cursor, promociones, "promocion", inicializar=True)
 
   conn.commit()
   conn.close()
